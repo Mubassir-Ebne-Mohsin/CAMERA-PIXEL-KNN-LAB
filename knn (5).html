@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CAMERA PIXEL KNN LAB</title>
+<style>
+:root{--bg:#05070d;--p:rgba(14,22,38,.72);--b:rgba(0,229,255,.22);--t:#e4f1ff;--m:#7f93ad;--a:#00e5ff;--a2:#ff2bd6;--glow:0 0 14px rgba(0,229,255,.35)}
+[data-theme=light]{--bg:#eef3fa;--p:rgba(255,255,255,.85);--b:rgba(0,110,160,.28);--t:#0e1b2c;--m:#51647c;--a:#0077b6;--a2:#c2189f;--glow:0 0 10px rgba(0,119,182,.25)}
+*{box-sizing:border-box}
+body{margin:0;color:var(--t);font:14px/1.5 "Inter","Segoe UI",system-ui,sans-serif;min-height:100vh;
+ background:radial-gradient(900px 500px at 85% -10%,rgba(255,43,214,.13),transparent 60%),radial-gradient(900px 600px at 0% 0%,rgba(0,229,255,.12),transparent 60%),
+ linear-gradient(rgba(0,229,255,.045) 1px,transparent 1px) 0 0/36px 36px,linear-gradient(90deg,rgba(0,229,255,.045) 1px,transparent 1px) 0 0/36px 36px,var(--bg);background-attachment:fixed}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:12px 18px;border-bottom:1px solid var(--b);position:sticky;top:0;z-index:5;backdrop-filter:blur(14px);background:color-mix(in srgb,var(--bg) 70%,transparent)}
+h1{font:800 17px "JetBrains Mono",ui-monospace,monospace;letter-spacing:.22em;margin:0;flex:1;background:linear-gradient(90deg,var(--a),var(--a2));-webkit-background-clip:text;background-clip:text;color:transparent}
+h1::before{content:"";display:inline-block;width:9px;height:9px;margin-right:10px;border-radius:50%;background:var(--a);box-shadow:0 0 10px var(--a);animation:pulse 2s infinite}
+@keyframes pulse{50%{opacity:.3}}@media(prefers-reduced-motion:reduce){h1::before{animation:none}}
+h3{margin:0 0 10px;font:600 11px ui-monospace,monospace;text-transform:uppercase;letter-spacing:.2em;color:var(--a)}
+h3::before{content:"// ";color:var(--a2)}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) 390px;gap:14px;padding:14px;max-width:1560px;margin:auto}
+@media(max-width:960px){.wrap{grid-template-columns:1fr;padding:8px}}
+.card{position:relative;background:var(--p);border:1px solid var(--b);border-radius:12px;padding:14px;margin-bottom:14px;backdrop-filter:blur(12px);box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.card::before,.card::after{content:"";position:absolute;width:14px;height:14px;pointer-events:none}
+.card::before{top:-1px;left:-1px;border-top:2px solid var(--a);border-left:2px solid var(--a);border-radius:12px 0 0 0}
+.card::after{bottom:-1px;right:-1px;border-bottom:2px solid var(--a2);border-right:2px solid var(--a2);border-radius:0 0 12px 0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+label{color:var(--m);font-size:12px}
+button,select,input{font:inherit;color:var(--t);background:color-mix(in srgb,var(--bg) 80%,transparent);border:1px solid var(--b);border-radius:8px;padding:6px 11px;min-height:34px;transition:.15s}
+button{cursor:pointer;font-weight:500}
+button:hover,select:hover,input:hover{border-color:var(--a);box-shadow:var(--glow)}
+button.on{background:linear-gradient(135deg,var(--a),var(--a2));color:#fff;border-color:transparent;box-shadow:var(--glow)}
+:focus-visible{outline:2px solid var(--a2);outline-offset:2px}
+input[type=range]{padding:0;min-height:22px;accent-color:var(--a);vertical-align:middle}input[type=number]{width:64px}
+input[type=file]{max-width:210px;font-size:12px}
+canvas{max-width:100%;display:block;image-rendering:pixelated;background:#000;border-radius:8px;touch-action:none;border:1px solid var(--b)}
+#view{width:100%;cursor:crosshair;box-shadow:0 0 0 1px var(--b),0 0 28px rgba(0,229,255,.18)}
+#hist,#kc{width:100%;image-rendering:auto}
+#big{border:0!important;box-shadow:var(--glow);letter-spacing:.06em}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;word-break:break-word}
+#perf{padding:4px 10px;border:1px solid var(--b);border-radius:20px;color:var(--a)}
+#status{font-size:12px}
+table{border-collapse:collapse}td{border:1px solid var(--b);padding:3px 6px;text-align:center;font:11px ui-monospace,monospace}td.c{background:var(--a2);color:#fff;box-shadow:0 0 8px var(--a2)}
+.sw{display:inline-block;width:30px;height:30px;border:1px solid var(--a);vertical-align:middle;border-radius:6px;box-shadow:var(--glow)}
+.m{color:var(--m)}pre{margin:0;white-space:pre-wrap}
+#pix,#info,#feat,#convo,#kout{line-height:1.6}
+::-webkit-scrollbar{height:8px;width:8px}::-webkit-scrollbar-thumb{background:var(--b);border-radius:8px}
+</style>
+</head>
+<body>
+<header>
+<h1>CAMERA PIXEL KNN LAB</h1>
+<span id="status" class="m" role="status">Camera off</span>
+<span class="mono" id="perf">FPS – | – ms</span>
+<button id="theme" aria-label="Toggle theme">◐ Theme</button>
+<button id="fs" aria-label="Fullscreen">⛶</button>
+</header>
+<div class="wrap">
+<main>
+<div class="card" id="stage">
+<div class="row">
+<button id="start">Start camera</button><button id="stop">Stop</button><button id="freeze">Freeze</button><button id="snap">Snapshot PNG</button>
+<select id="cam" aria-label="Camera"><option value="">Default camera</option></select>
+<label class="m">Upload <input type="file" id="file" accept="image/*"></label>
+</div>
+<div class="row">
+<label>View <select id="mode"><option value="original">Original</option><option value="red">Red</option><option value="green">Green</option><option value="blue">Blue</option><option value="gray">Grayscale</option><option value="binary">Binary</option><option value="sobel">Sobel edge</option><option value="prewitt">Prewitt edge</option><option value="laplacian">Laplacian</option><option value="segment">Components</option></select></label>
+<label>Gray <select id="gm"><option value="lum">Luminance</option><option value="avg">Average</option><option value="light">Lightness</option></select></label>
+<label>Resolution <select id="res"><option value="160">Low</option><option value="320" selected>Medium</option><option value="640">High</option></select></label>
+</div>
+<div class="row">
+<label>Blur passes <input id="blur" type="range" min="0" max="10" value="0"></label>
+<label>Threshold <select id="tm"><option value="manual">Manual</option><option value="otsu">Otsu</option><option value="adaptive">Adaptive (mean)</option></select></label>
+<input id="thr" type="range" min="0" max="255" value="128" aria-label="Threshold"><span id="thrv" class="mono">128</span>
+<label>Block <input id="blk" type="number" value="15" min="3" step="2"></label><label>C <input id="cc" type="number" value="5"></label>
+<label>Morphology <select id="mo"><option value="none">None</option><option value="erode">Erosion</option><option value="dilate">Dilation</option><option value="open">Opening</option><option value="close">Closing</option></select></label>
+</div>
+<button id="big" style="width:100%;margin-bottom:8px;background:var(--a);color:#fff;font-weight:600">▶ Start LIVE camera</button>
+<canvas id="view" aria-label="Processed image: hover or tap to inspect a pixel"></canvas>
+<p class="m">Camera processing happens locally in your browser. Nothing is uploaded. (Camera needs HTTPS or localhost.)</p>
+</div>
+
+<div class="card"><h3>Histogram</h3>
+<div class="row"><select id="hc"><option value="gray">Gray</option><option value="r">Red</option><option value="g">Green</option><option value="b">Blue</option><option value="rgb">RGB overlay</option><option value="bin">Binary</option></select><span id="hstat" class="mono"></span></div>
+<canvas id="hist" width="512" height="140"></canvas><div id="htip" class="mono m">Hover the histogram.</div></div>
+
+<div class="card"><h3>KNN laboratory (feature space)</h3>
+<div class="row">
+<label>X <select id="fx"></select></label><label>Y <select id="fy"></select></label>
+<label>K <input id="k" type="range" min="1" max="15" value="3"><span id="kv" class="mono">3</span></label>
+<select id="dm"><option value="e">Euclidean</option><option value="m">Manhattan</option></select>
+</div>
+<div class="row">
+<button class="cl on" data-c="0" style="border-color:#2f81f7">Class A</button><button class="cl" data-c="1" style="border-color:#f85149">Class B</button><button class="cl" data-c="2" style="border-color:#3fb950">Class C</button>
+<button id="qm">Click = add sample</button><button id="addimg">Add current image</button><button id="qimg">Classify current image</button>
+<button id="demo">Demo points</button><button id="replay">Replay</button><button id="clr">Clear</button><button id="exk">Export JSON</button>
+</div>
+<canvas id="kc" width="480" height="360" aria-label="KNN feature space"></canvas>
+<pre id="kout" class="mono"></pre></div>
+</main>
+
+<aside>
+<div class="card"><h3>Pixel inspector</h3><div id="pix" class="mono">Hover/tap the image.</div></div>
+<div class="card"><h3>Magnifier <span id="magmode"></span></h3>
+<div class="row"><label>Zoom <select id="zoom"><option>1</option><option>2</option><option>4</option><option>8</option><option>16</option><option>32</option><option selected>64</option></select></label>
+<label>Window <select id="ns"><option>3</option><option selected>5</option><option>7</option></select></label>
+<label>Matrix <select id="mx"><option value="view" selected>Current view</option><option value="gray">Gray</option><option value="rgb">RGB</option><option value="bin">Binary</option></select></label></div>
+<canvas id="mag" width="192" height="192"></canvas><div id="matrix" style="overflow:auto;margin-top:6px"></div></div>
+<div class="card"><h3>Convolution (selected pixel, 3×3)</h3>
+<select id="kern"><option value="blur">Blur</option><option value="sharp">Sharpen</option><option value="edge">Edge</option><option value="sx">Sobel X</option><option value="sy">Sobel Y</option><option value="lap">Laplacian</option></select>
+<pre id="convo" class="mono"></pre></div>
+<div class="card"><h3>Image statistics</h3><pre id="info" class="mono"></pre></div>
+<div class="card"><h3>Features / components</h3><pre id="feat" class="mono"></pre></div>
+<div class="card"><h3>Learning notes</h3><div class="m" style="font-size:12px">
+RGB = 3×8 bit = 24 bit/pixel (conceptual raw; browsers store RGBA). Gray = 1×8 bit: hue/saturation lost. Binary = 1 bit: all intensity detail lost except above/below threshold. Blur averages neighbours (noise ↓, detail ↓). Sobel measures intensity gradient √(Gx²+Gy²). KNN predicts by majority vote of the K closest labelled points in feature space.</div></div>
+</aside>
+</div>
+<video id="video" playsinline muted hidden></video>
+<script>
+'use strict';
+/* ===== Helpers ===== */
+const $=s=>document.querySelector(s), clamp=(v,a,b)=>Math.min(b,Math.max(a,v)), b8=v=>v.toString(2).padStart(8,'0');
+const video=$('#video'), view=$('#view'), vctx=view.getContext('2d');
+const work=document.createElement('canvas'), wctx=work.getContext('2d',{willReadFrequently:true});
+const still=document.createElement('canvas'), sctx=still.getContext('2d');
+const S={w:0,h:0,img:null,gray:null,pg:null,bin:null,sel:null,thr:128,stream:null,live:false,frozen:false,raf:0,last:0,comps:[]};
+const KS={SX:[-1,0,1,-2,0,2,-1,0,1],SY:[-1,-2,-1,0,0,0,1,2,1],PX:[-1,0,1,-1,0,1,-1,0,1],PY:[-1,-1,-1,0,0,0,1,1,1]};
+const KERN={blur:{k:[1,1,1,1,1,1,1,1,1],d:9},sharp:{k:[0,-1,0,-1,5,-1,0,-1,0],d:1},edge:{k:[-1,-1,-1,-1,8,-1,-1,-1,-1],d:1},sx:{k:KS.SX,d:1},sy:{k:KS.SY,d:1},lap:{k:[0,1,0,1,-4,1,0,1,0],d:1}};
+
+/* ===== Color math ===== */
+const gv=(r,g,b,m)=>Math.round(m==='avg'?(r+g+b)/3:m==='light'?(Math.max(r,g,b)+Math.min(r,g,b))/2:.299*r+.587*g+.114*b);
+function hsv(r,g,b){r/=255;g/=255;b/=255;const M=Math.max(r,g,b),m=Math.min(r,g,b),d=M-m;let h=0;
+ if(d){h=M===r?((g-b)/d)%6:M===g?(b-r)/d+2:(r-g)/d+4;h=(h*60+360)%360}return{h,s:M?d/M:0,v:M,M,m,d}}
+function hsl(r,g,b){const o=hsv(r,g,b),l=(o.M+o.m)/2;return{h:o.h,s:o.d?o.d/(1-Math.abs(2*l-1)):0,l}}
+const ycc=(r,g,b)=>[.299*r+.587*g+.114*b,128-.168736*r-.331264*g+.5*b,128+.5*r-.418688*g-.081312*b];
+
+/* ===== Image processing (pure functions) ===== */
+function toGray(d,n,m){const o=new Uint8Array(n);for(let i=0;i<n;i++)o[i]=gv(d[4*i],d[4*i+1],d[4*i+2],m);return o}
+function conv(g,w,h,k,div=1){const o=new Float32Array(w*h);
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0;
+  for(let j=-1;j<=1;j++){const yy=clamp(y+j,0,h-1);for(let i=-1;i<=1;i++)s+=k[(j+1)*3+i+1]*g[yy*w+clamp(x+i,0,w-1)]}
+  o[y*w+x]=s/div}return o}
+function gaussian(g,w,h,passes){let c=g;for(let p=0;p<passes;p++)c=Uint8ClampedArray.from(conv(c,w,h,[1,2,1,2,4,2,1,2,1],16));return c}
+function gradMag(g,w,h,kx,ky){const a=conv(g,w,h,kx),b=conv(g,w,h,ky),o=new Uint8ClampedArray(w*h);for(let i=0;i<o.length;i++)o[i]=Math.hypot(a[i],b[i]);return o}
+function histo(arr,step=1,off=0){const H=new Uint32Array(256);for(let i=off;i<arr.length;i+=step)H[arr[i]]++;return H}
+function otsu(H,total){let sum=0;for(let t=0;t<256;t++)sum+=t*H[t];let wB=0,sB=0,best=0,thr=0;
+ for(let t=0;t<256;t++){wB+=H[t];if(!wB)continue;const wF=total-wB;if(!wF)break;sB+=t*H[t];
+  const mB=sB/wB,mF=(sum-sB)/wF,v=wB*wF*(mB-mF)**2;if(v>best){best=v;thr=t}}return thr}
+function adaptive(g,w,h,blk,C){const I=new Float64Array((w+1)*(h+1));
+ for(let y=0;y<h;y++){let r=0;for(let x=0;x<w;x++){r+=g[y*w+x];I[(y+1)*(w+1)+x+1]=I[y*(w+1)+x+1]+r}}
+ const o=new Uint8Array(w*h),R=blk>>1;
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){const x0=Math.max(0,x-R),x1=Math.min(w,x+R+1),y0=Math.max(0,y-R),y1=Math.min(h,y+R+1);
+  const s=I[y1*(w+1)+x1]-I[y0*(w+1)+x1]-I[y1*(w+1)+x0]+I[y0*(w+1)+x0];
+  o[y*w+x]=g[y*w+x]>s/((x1-x0)*(y1-y0))-C?255:0}return o}
+function morph1(b,w,h,erode){const o=new Uint8Array(w*h);
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){let all=1,any=0;
+  for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++){const v=b[clamp(y+j,0,h-1)*w+clamp(x+i,0,w-1)];if(v)any=1;else all=0}
+  o[y*w+x]=(erode?all:any)?255:0}return o}
+function morph(b,w,h,m){const e=x=>morph1(x,w,h,true),d=x=>morph1(x,w,h,false);
+ return m==='erode'?e(b):m==='dilate'?d(b):m==='open'?d(e(b)):m==='close'?e(d(b)):b}
+/* 4-connected component labelling by iterative flood fill */
+function components(b,w,h,minA=20){const seen=new Uint8Array(w*h),st=new Int32Array(w*h),out=[];
+ for(let s=0;s<w*h;s++){if(!b[s]||seen[s])continue;let sp=0,a=0,sx=0,sy=0,x0=w,y0=h,x1=0,y1=0;st[sp++]=s;seen[s]=1;
+  while(sp){const p=st[--sp],x=p%w,y=(p/w)|0;a++;sx+=x;sy+=y;x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);
+   if(x>0&&b[p-1]&&!seen[p-1]){seen[p-1]=1;st[sp++]=p-1}if(x<w-1&&b[p+1]&&!seen[p+1]){seen[p+1]=1;st[sp++]=p+1}
+   if(y>0&&b[p-w]&&!seen[p-w]){seen[p-w]=1;st[sp++]=p-w}if(y<h-1&&b[p+w]&&!seen[p+w]){seen[p+w]=1;st[sp++]=p+w}}
+  if(a>=minA)out.push({a,cx:sx/a,cy:sy/a,x0,y0,x1,y1})}return out.sort((p,q)=>q.a-p.a)}
+function stats(H){let n=0,s=0,mn=-1,mx=0;for(let i=0;i<256;i++){n+=H[i];s+=i*H[i];if(H[i]){if(mn<0)mn=i;mx=i}}
+ const mean=s/n;let v=0,c=0,med=0;for(let i=0;i<256;i++){v+=H[i]*(i-mean)**2;if(!med&&(c+=H[i])>=n/2)med=i}
+ return{n,mn,mx,mean,med,sd:Math.sqrt(v/n)}}
+
+/* ===== Pipeline ===== */
+function srcEl(){return S.live&&!S.frozen?video:still}
+function render(){
+ const el=srcEl(),sw=el.videoWidth||el.width,sh=el.videoHeight||el.height;if(!sw||!sh)return;
+ const t0=performance.now(),W=+$('#res').value,H=Math.round(W*sh/sw);
+ work.width=W;work.height=H;wctx.drawImage(el,0,0,W,H);
+ S.w=W;S.h=H;S.img=wctx.getImageData(0,0,W,H);const d=S.img.data,n=W*H;
+ S.gray=toGray(d,n,$('#gm').value);S.pg=gaussian(S.gray,W,H,+$('#blur').value);
+ const tm=$('#tm').value,Hh=histo(S.pg);
+ S.thr=tm==='otsu'?otsu(Hh,n):+$('#thr').value;
+ if(tm==='otsu')$('#thr').value=S.thr;$('#thrv').textContent=tm==='adaptive'?'local':S.thr;
+ let bin=tm==='adaptive'?adaptive(S.pg,W,H,+$('#blk').value|1,+$('#cc').value):Uint8Array.from(S.pg,v=>v>S.thr?255:0);
+ S.bin=morph(bin,W,H,$('#mo').value);
+ const m=$('#mode').value,out=new ImageData(W,H),o=out.data;
+ const paint=a=>{for(let i=0;i<n;i++){o[4*i]=o[4*i+1]=o[4*i+2]=a[i];o[4*i+3]=255}};
+ if(m==='original')o.set(d);
+ else if(m==='red'||m==='green'||m==='blue'){const c=m==='red'?0:m==='green'?1:2;for(let i=0;i<n;i++){o[4*i+c]=d[4*i+c];o[4*i+3]=255}}
+ else if(m==='gray')paint(S.pg);else if(m==='binary')paint(S.bin);
+ else if(m==='sobel')paint(gradMag(S.pg,W,H,KS.SX,KS.SY));else if(m==='prewitt')paint(gradMag(S.pg,W,H,KS.PX,KS.PY));
+ else if(m==='laplacian'){const L=conv(S.pg,W,H,KERN.lap.k);paint(Uint8ClampedArray.from(L,Math.abs))}
+ else{o.set(d);for(let i=0;i<n;i++)if(S.bin[i]){o[4*i]=o[4*i]*.4+150;o[4*i+3]=255}}
+ S.out=out;view.width=W;view.height=H;vctx.putImageData(out,0,0);
+ S.comps=components(S.bin,W,H);
+ if(m==='segment'){vctx.strokeStyle='#0f0';vctx.lineWidth=1;S.comps.slice(0,30).forEach(c=>vctx.strokeRect(c.x0+.5,c.y0+.5,c.x1-c.x0,c.y1-c.y0))}
+ S.ms=performance.now()-t0;updatePanels();
+}
+function loop(t){S.raf=0;if(!S.live||S.frozen)return;render();
+ $('#perf').textContent=`FPS ${(1000/(t-S.last||1)).toFixed(0)} | ${S.ms.toFixed(1)} ms | ${S.w}×${S.h}`;S.last=t;S.raf=requestAnimationFrame(loop)}
+const refresh=()=>{if(!(S.live&&!S.frozen))render()};
+
+/* ===== Panels ===== */
+function pixAt(x,y){const i=(clamp(y,0,S.h-1)*S.w+clamp(x,0,S.w-1)),d=S.img.data;return{r:d[4*i],g:d[4*i+1],b:d[4*i+2],gray:S.gray[i],pg:S.pg[i],bin:S.bin[i]?1:0}}
+const outAt=(x,y)=>{const i=4*(clamp(y,0,S.h-1)*S.w+clamp(x,0,S.w-1)),d=S.out.data;return[d[i],d[i+1],d[i+2]]};
+function updatePanels(){
+ const hc=$('#hc').value,id=S.img.data,n=S.w*S.h;let H,ov=null;
+ const ch=c=>{const h=new Uint32Array(256);for(let i=0;i<n;i++)h[id[4*i+c]]++;return h};
+ if(hc==='gray')H=histo(S.gray);else if(hc==='bin')H=histo(S.bin);else if(hc==='rgb'){ov=[ch(0),ch(1),ch(2)];H=ov[0]}else H=ch('rgb'.indexOf(hc));
+ S.H=H;const st=stats(H);
+ $('#hstat').textContent=`min ${st.mn} max ${st.mx} mean ${st.mean.toFixed(1)} median ${st.med} σ ${st.sd.toFixed(1)}`;
+ const hx=$('#hist').getContext('2d'),mx=Math.max(...(ov?ov.flatMap(a=>[...a]):H));hx.clearRect(0,0,512,140);
+ (ov||[H]).forEach((h,k)=>{hx.fillStyle=ov?['#f85149','#3fb950','#2f81f7'][k]:'#8b949e';hx.globalAlpha=ov?.55:1;
+  for(let i=0;i<256;i++)hx.fillRect(i*2,140-h[i]/mx*136,2,h[i]/mx*136)});hx.globalAlpha=1;
+ hx.strokeStyle='#d29922';hx.beginPath();hx.moveTo(S.thr*2,0);hx.lineTo(S.thr*2,140);hx.stroke();
+ const gs=stats(histo(S.gray)),wh=S.bin.reduce((a,v)=>a+(v?1:0),0);
+ $('#info').textContent=
+`Size ${S.w}×${S.h} = ${n.toLocaleString()} px  (aspect ${(S.w/S.h).toFixed(3)})
+Raw RGB  ≈ ${n} × 3 B = ${(n*3).toLocaleString()} B
+Raw gray ≈ ${n} × 1 B = ${n.toLocaleString()} B
+Raw 1-bit ≈ ${n} / 8 = ${Math.ceil(n/8).toLocaleString()} B
+(conceptual raw sizes, not file size)
+Gray: min ${gs.mn} max ${gs.mx} mean ${gs.mean.toFixed(1)} median ${gs.med}
+ σ(contrast) ${gs.sd.toFixed(1)} range ${gs.mx-gs.mn}
+Threshold ${$('#tm').value==='adaptive'?'adaptive':S.thr}
+White(1) ${wh} (${(100*wh/n).toFixed(1)}%)  Black(0) ${n-wh} (${(100*(n-wh)/n).toFixed(1)}%)`;
+ $('#feat').textContent=`Components (4-conn, area≥20): ${S.comps.length}\n`+S.comps.slice(0,6).map((c,i)=>`#${i+1} area ${c.a} box (${c.x0},${c.y0})-(${c.x1},${c.y1}) ${c.x1-c.x0+1}×${c.y1-c.y0+1} centroid (${c.cx.toFixed(1)},${c.cy.toFixed(1)})`).join('\n')+'\n\n'+FN.map((f,i)=>`${f}: ${feats()[i].toFixed(3)}`).join('\n');
+ inspect();
+}
+function inspect(){
+ if(!S.sel){return}const{x,y}=S.sel,p=pixAt(x,y),m=$('#gm').value;
+ const hv=hsv(p.r,p.g,p.b),hl=hsl(p.r,p.g,p.b),yc=ycc(p.r,p.g,p.b);
+ const hex='#'+[p.r,p.g,p.b].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+ const calc=m==='avg'?`(${p.r}+${p.g}+${p.b})/3`:m==='light'?`(max ${Math.max(p.r,p.g,p.b)} + min ${Math.min(p.r,p.g,p.b)})/2`:`0.299(${p.r}) + 0.587(${p.g}) + 0.114(${p.b})`;
+ const nb=(dx,dy)=>S.pg[clamp(y+dy,0,S.h-1)*S.w+clamp(x+dx,0,S.w-1)];
+ const gx=-nb(-1,-1)+nb(1,-1)-2*nb(-1,0)+2*nb(1,0)-nb(-1,1)+nb(1,1),gy=-nb(-1,-1)-2*nb(0,-1)-nb(1,-1)+nb(-1,1)+2*nb(0,1)+nb(1,1);
+ const dom=['red','green','blue'][[p.r,p.g,p.b].indexOf(Math.max(p.r,p.g,p.b))];
+ $('#pix').innerHTML=`<span class="sw" style="background:${hex}"></span> (${x}, ${y})
+RGB ${p.r},${p.g},${p.b}  ${hex}
+HSV ${hv.h.toFixed(0)}° ${(hv.s*100).toFixed(0)}% ${(hv.v*100).toFixed(0)}%
+HSL ${hl.h.toFixed(0)}° ${(hl.s*100).toFixed(0)}% ${(hl.l*100).toFixed(0)}%
+YCbCr ${yc.map(v=>v.toFixed(0)).join(', ')}
+Gray = ${calc} = ${p.gray}
+Binary = ${p.pg} ${p.pg>S.thr?'>':'≤'} ${S.thr} → ${p.bin} (after morphology)
+Bits R ${b8(p.r)} G ${b8(p.g)} B ${b8(p.b)} (24 b) | gray ${b8(p.gray)}
+<b>Journey:</b> RGB(${p.r},${p.g},${p.b}) → gray ${p.gray} → blurred ${p.pg} → binary ${p.bin} → |∇| ${Math.min(255,Math.hypot(gx,gy)).toFixed(0)}
+<b>Explain:</b> ${dom} is the strongest channel; saturation ${(hv.s*100).toFixed(0)}% → ${hv.s<.2?'near-neutral':'colourful'}; gray ${p.gray} → ${p.gray<85?'dark':p.gray<170?'mid-tone':'bright'}.`.replace(/\n/g,'<br>');
+ // magnifier
+ const z=+$('#zoom').value,cell=Math.max(3,z*3),nn=Math.max(1,Math.floor(192/cell)|1),r=nn>>1,mg=$('#mag').getContext('2d'),cs=192/nn;
+ mg.clearRect(0,0,192,192);
+ for(let j=-r;j<=r;j++)for(let i=-r;i<=r;i++){const q=outAt(x+i,y+j);mg.fillStyle=`rgb(${q[0]},${q[1]},${q[2]})`;mg.fillRect((i+r)*cs,(j+r)*cs,cs+.5,cs+.5)}
+ if(cs>=6){mg.strokeStyle='rgba(128,128,128,.5)';for(let i=0;i<=nn;i++){mg.strokeRect(0,0,0,0);mg.beginPath();mg.moveTo(i*cs,0);mg.lineTo(i*cs,192);mg.moveTo(0,i*cs);mg.lineTo(192,i*cs);mg.stroke()}}
+ mg.strokeStyle='#f0f';mg.strokeRect(r*cs,r*cs,cs,cs);
+ $('#magmode').textContent='— '+$('#mode').selectedOptions[0].text+' view (live)';
+ const ns=+$('#ns').value,R=ns>>1,mode=$('#mx').value;let t='<table>';
+ for(let j=-R;j<=R;j++){t+='<tr>';for(let i=-R;i<=R;i++){const q=pixAt(x+i,y+j);
+  t+=`<td${i||j?'':' class="c"'}>${mode==='view'?(o=>o[0]===o[1]&&o[1]===o[2]?o[0]:o.join(','))(outAt(x+i,y+j)):mode==='rgb'?`${q.r},${q.g},${q.b}`:mode==='bin'?q.bin:q.gray}</td>`}t+='</tr>'}$('#matrix').innerHTML=t+'</table>';
+ // convolution on gray
+ const K=KERN[$('#kern').value],terms=[];let sum=0;
+ for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++){const v=S.gray[clamp(y+j,0,S.h-1)*S.w+clamp(x+i,0,S.w-1)],k=K.k[(j+1)*3+i+1];terms.push(`(${k}×${v})`);sum+=k*v}
+ $('#convo').textContent=`Kernel${K.d>1?' ×1/'+K.d:''}\n`+[0,1,2].map(r=>'['+K.k.slice(r*3,r*3+3).map(v=>String(v).padStart(3)).join(' ')+']').join('\n')+`\n${terms.join(' + ')}\n= ${sum}${K.d>1?' / '+K.d+' = '+(sum/K.d).toFixed(1):''} → output ${clamp(Math.round(sum/K.d),0,255)} (clamped)\n(cross-correlation, no kernel flip, as in OpenCV)`;
+}
+
+/* ===== Features + KNN ===== */
+const FN=['Mean gray','Mean R','Mean G','Mean B','Std dev','Edge density','White ratio'],FR=[255,255,255,255,128,1,1];
+function feats(){const d=S.img.data,n=S.w*S.h;let r=0,g=0,b=0;for(let i=0;i<n;i++){r+=d[4*i];g+=d[4*i+1];b+=d[4*i+2]}
+ const gs=stats(histo(S.gray)),ed=gradMag(S.pg,S.w,S.h,KS.SX,KS.SY);let e=0;for(let i=0;i<n;i++)if(ed[i]>100)e++;
+ let w=0;for(let i=0;i<n;i++)if(S.bin[i])w++;return[gs.mean,r/n,g/n,b/n,gs.sd,e/n,w/n]}
+const nrm=v=>v.map((x,i)=>clamp(x/FR[i],0,1));
+const K={pts:[],q:null,cls:0,add:true,show:99},COL=['#2f81f7','#f85149','#3fb950'],CN=['A','B','C'];
+FN.forEach((f,i)=>{$('#fx').add(new Option(f,i,0,i===0));$('#fy').add(new Option(f,i,0,i===5))});
+const kd=(a,b)=>{const x=+$('#fx').value,y=+$('#fy').value,dx=a[x]-b[x],dy=a[y]-b[y];return $('#dm').value==='e'?Math.hypot(dx,dy):Math.abs(dx)+Math.abs(dy)};
+function knnDraw(){const c=$('#kc'),g=c.getContext('2d'),W=c.width,H=c.height,x=+$('#fx').value,y=+$('#fy').value,k=+$('#k').value;
+ const css=getComputedStyle(document.documentElement);g.fillStyle=document.documentElement.dataset.theme==='light'?'#f4f8fd':'#070d18';g.fillRect(0,0,W,H);
+ g.strokeStyle=css.getPropertyValue('--b');g.fillStyle=css.getPropertyValue('--m');g.font='11px monospace';
+ for(let i=0;i<=10;i++){g.beginPath();g.moveTo(i*W/10,0);g.lineTo(i*W/10,H);g.moveTo(0,i*H/10);g.lineTo(W,i*H/10);g.stroke()}
+ g.fillText(FN[x]+' →',W-110,H-4);g.fillText('↑ '+FN[y],4,12);
+ const P=v=>[v[x]*W,(1-v[y])*H];let res=null;
+ if(K.q&&K.pts.length){const nb=K.pts.map(p=>({p,d:kd(K.q,p)})).sort((a,b)=>a.d-b.d).slice(0,k);const votes=[0,0,0],ds=[0,0,0];nb.forEach(o=>{votes[o.p.c]++;ds[o.p.c]+=o.d});
+  let best=0;for(let c=1;c<3;c++)if(votes[c]>votes[best]||(votes[c]===votes[best]&&votes[c]&&ds[c]<ds[best]))best=c;res={nb,votes,best};
+  nb.forEach((o,i)=>{if(i<K.show){const[a,b]=P(K.q),[c2,d2]=P(o.p.v);g.strokeStyle=COL[o.p.c];g.beginPath();g.moveTo(a,b);g.lineTo(c2,d2);g.stroke()}})}
+ K.pts.forEach(p=>{const[a,b]=P(p.v);g.fillStyle=COL[p.c];g.beginPath();g.arc(a,b,5,0,7);g.fill()});
+ if(K.q){const[a,b]=P(K.q);g.strokeStyle=css.getPropertyValue('--t');g.lineWidth=2;g.beginPath();g.arc(a,b,9,0,7);g.stroke();g.lineWidth=1;
+  if(res&&K.show>=k){g.fillStyle=COL[res.best];g.beginPath();g.arc(a,b,5,0,7);g.fill()}}
+ const e=$('#dm').value==='e';
+ $('#kout').textContent=!K.q?'Add labelled samples, then place a query (toggle the click mode) or classify the current image.\nNote: clicks set only the selected X/Y features (others = 0.5); distances use only X and Y, normalised to 0–1.':!res?'No samples.':
+`Query: ${FN[x]}=${K.q[x].toFixed(3)}  ${FN[y]}=${K.q[y].toFixed(3)}\n${e?'d = √[(x₂−x₁)² + (y₂−y₁)²]':'d = |x₂−x₁| + |y₂−y₁|'}\n`+res.nb.map((o,i)=>`Neighbour ${i+1}: class ${CN[o.p.c]}  d = ${e?`√[(${K.q[x].toFixed(3)}−${o.p.v[x].toFixed(3)})²+(${K.q[y].toFixed(3)}−${o.p.v[y].toFixed(3)})²]`:`|${K.q[x].toFixed(3)}−${o.p.v[x].toFixed(3)}|+|${K.q[y].toFixed(3)}−${o.p.v[y].toFixed(3)}|`} = ${o.d.toFixed(4)}`).join('\n')+
+`\nVotes: A=${res.votes[0]} B=${res.votes[1]} C=${res.votes[2]} (ties → smaller summed distance)\nPrediction: class ${CN[res.best]}`}
+$('#kc').addEventListener('pointerdown',e=>{const c=$('#kc'),r=c.getBoundingClientRect(),v=Array(7).fill(.5);
+ v[+$('#fx').value]=clamp((e.clientX-r.left)/r.width,0,1);v[+$('#fy').value]=clamp(1-(e.clientY-r.top)/r.height,0,1);
+ if(K.add)K.pts.push({v,c:K.cls});else K.q=v;K.show=99;knnDraw()});
+document.querySelectorAll('.cl').forEach(b=>b.onclick=()=>{K.cls=+b.dataset.c;document.querySelectorAll('.cl').forEach(x=>x.classList.toggle('on',x===b))});
+$('#qm').onclick=e=>{K.add=!K.add;e.target.textContent=K.add?'Click = add sample':'Click = set query'};
+$('#addimg').onclick=()=>{if(S.img){K.pts.push({v:nrm(feats()),c:K.cls});knnDraw()}};
+$('#qimg').onclick=()=>{if(S.img){K.q=nrm(feats());K.show=99;knnDraw()}};
+$('#demo').onclick=()=>{const cs=[[.25,.25],[.75,.3],[.5,.78]];K.pts=[];cs.forEach((c,ci)=>[[0,0],[.06,.04],[-.05,.06],[.04,-.06],[-.07,-.03]].forEach(o=>{const v=Array(7).fill(.5);v[+$('#fx').value]=c[0]+o[0];v[+$('#fy').value]=c[1]+o[1];K.pts.push({v,c:ci})}));knnDraw()};
+$('#clr').onclick=()=>{K.pts=[];K.q=null;knnDraw()};
+$('#replay').onclick=()=>{if(!K.q)return;const k=+$('#k').value;K.show=0;(function s(){knnDraw();if(K.show<k){K.show++;setTimeout(s,matchMedia('(prefers-reduced-motion:reduce)').matches?0:500)}else knnDraw()})()};
+['fx','fy','k','dm'].forEach(i=>$('#'+i).addEventListener('input',()=>{$('#kv').textContent=$('#k').value;K.show=99;knnDraw()}));
+
+/* ===== Camera / upload ===== */
+const status=t=>$('#status').textContent=t;
+async function listCams(){try{const ds=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput'),cur=$('#cam').value;
+ $('#cam').innerHTML='<option value="">Default camera</option>';ds.forEach((d,i)=>$('#cam').add(new Option(d.label||'Camera '+(i+1),d.deviceId)));$('#cam').value=cur}catch{}}
+async function startCam(){
+ if(!navigator.mediaDevices?.getUserMedia)return status('Camera API unavailable — use HTTPS or http://localhost in a modern browser');
+ try{stopCam();const id=$('#cam').value;S.stream=await navigator.mediaDevices.getUserMedia({video:id?{deviceId:{exact:id}}:true,audio:false});
+  video.srcObject=S.stream;await video.play();S.live=true;S.frozen=false;$('#freeze').textContent='Freeze';$('#big').hidden=true;
+  const t=S.stream.getVideoTracks()[0],s=t.getSettings();status(`Live: ${t.label||'camera'} ${video.videoWidth}×${video.videoHeight} @${s.frameRate||'?'}fps`);listCams();if(!S.raf)S.raf=requestAnimationFrame(loop)
+ }catch(e){status({NotAllowedError:'Camera permission denied',NotFoundError:'No camera detected',NotReadableError:'Camera busy or unavailable',OverconstrainedError:'Camera constraints not supported'}[e.name]||'Camera error: '+e.message)}}
+function stopCam(){S.stream?.getTracks().forEach(t=>t.stop());S.stream=null;if(S.live&&still.width!==video.videoWidth){still.width=video.videoWidth||1;still.height=video.videoHeight||1}
+ if(S.live&&video.videoWidth)sctx.drawImage(video,0,0);S.live=false;$('#big').hidden=false;status('Camera off')}
+$('#big').onclick=$('#start').onclick=startCam;$('#stop').onclick=()=>{stopCam();refresh()};$('#cam').onchange=()=>S.live&&startCam();
+$('#freeze').onclick=e=>{if(!S.live)return;if(!S.frozen){still.width=video.videoWidth;still.height=video.videoHeight;sctx.drawImage(video,0,0);S.frozen=true;e.target.textContent='Resume';status('Frame frozen');render()}
+ else{S.frozen=false;e.target.textContent='Freeze';status('Live');if(!S.raf)S.raf=requestAnimationFrame(loop)}};
+$('#file').onchange=e=>{const f=e.target.files[0];if(!f)return;const im=new Image();im.onload=()=>{still.width=im.naturalWidth;still.height=im.naturalHeight;sctx.drawImage(im,0,0);S.live=false;status(`Image ${im.naturalWidth}×${im.naturalHeight}`);URL.revokeObjectURL(im.src);render()};im.onerror=()=>status('Could not read image');im.src=URL.createObjectURL(f)};
+$('#snap').onclick=()=>{const a=document.createElement('a');a.download='processed.png';a.href=view.toDataURL();a.click()};
+$('#exk').onclick=()=>{const a=document.createElement('a');a.download='knn.json';a.href=URL.createObjectURL(new Blob([JSON.stringify({features:FN,ranges:FR,samples:K.pts.map(p=>({class:CN[p.c],normalised:p.v})),query:K.q,k:+$('#k').value,metric:$('#dm').value},null,1)],{type:'application/json'}));a.click()};
+
+/* ===== UI wiring ===== */
+const sel=e=>{if(!S.img)return;const r=view.getBoundingClientRect();S.sel={x:clamp(Math.floor((e.clientX-r.left)/r.width*S.w),0,S.w-1),y:clamp(Math.floor((e.clientY-r.top)/r.height*S.h),0,S.h-1)};inspect()};
+view.addEventListener('pointermove',sel);view.addEventListener('pointerdown',sel);
+['mode','gm','res','blur','tm','thr','blk','cc','mo','hc'].forEach(i=>$('#'+i).addEventListener('input',refresh));
+['zoom','ns','mx','kern'].forEach(i=>$('#'+i).addEventListener('input',()=>S.img&&inspect()));
+$('#hist').addEventListener('pointermove',e=>{if(!S.H)return;const r=e.target.getBoundingClientRect(),i=clamp(Math.floor((e.clientX-r.left)/r.width*256),0,255);$('#htip').textContent=`Intensity = ${i}   Number of pixels = ${S.H[i]}`});
+$('#theme').onclick=()=>{const t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;try{localStorage.setItem('knnlab-theme',t)}catch{}knnDraw()};
+$('#fs').onclick=()=>document.fullscreenElement?document.exitFullscreen():$('#stage').requestFullscreen?.();
+try{const t=localStorage.getItem('knnlab-theme');document.documentElement.dataset.theme=t||(matchMedia('(prefers-color-scheme:light)').matches?'light':'dark')}catch{}
+// start with a deterministic built-in test pattern so every stage is usable without a camera
+(function(){still.width=320;still.height=240;sctx.fillStyle='#202830';sctx.fillRect(0,0,320,240);
+ [['#e04040',40,40,90,90],['#40c060',170,30,100,60],['#4060e0',90,140,120,80],['#f0d040',240,150,60,60]].forEach(([c,x,y,w,h])=>{sctx.fillStyle=c;sctx.fillRect(x,y,w,h)});
+ const g=sctx.createLinearGradient(0,0,320,0);g.addColorStop(0,'#000');g.addColorStop(1,'#fff');sctx.fillStyle=g;sctx.fillRect(0,215,320,25);status('Test pattern loaded — start camera or upload an image');render();S.sel={x:60,y:60};inspect();knnDraw();
+ if(location.protocol==='file:')status('file:// may block the camera — serve via http://localhost if it fails');
+ startCam()})();
+</script>
+</body>
+</html>
